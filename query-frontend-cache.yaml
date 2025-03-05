@@ -1,0 +1,4 @@
+type: IN-MEMORY
+config:
+  max_size: "512MB"
+  validity: 12h

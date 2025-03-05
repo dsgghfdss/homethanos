@@ -1,0 +1,10 @@
+type: s3
+config:
+  bucket: pcfi-thanos-storage
+  endpoint: "s3.amazonaws.com"
+  region: ca-central-1
+  insecure: false
+  signature_version2: false
+  put_user_metadata:
+      X-Amz-Storage-Class: STANDARD
+prefix: "stg"

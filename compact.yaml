@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: thanos-compact
+  name: thanos-compact
+  annotations:
+    prometheus.io/path: /metrics
+    prometheus.io/port: "10902"
+    prometheus.io/scrape: "true"
+spec:
+  ports:
+    - port: 10902
+      protocol: TCP
+      targetPort: http
+      name: http-query
+  selector:
+    app.kubernetes.io/name: thanos-compact
+  sessionAffinity: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thanos-compact
+spec:
+  strategy:
+    type: Recreate
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: thanos-compact
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: thanos-compact
+      name: thanos-compact
+    spec:
+      terminationGracePeriodSeconds: 1200
+      containers:
+        - name: thanos-compact
+          image: thanos
+          args:
+            - compact
+            - --data-dir=/var/thanos/compact
+            - --log.level=info
+            - --objstore.config-file=/etc/thanos/config.yaml
+            - --wait
+          ports:
+            - name: http
+              containerPort: 10902
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+              scheme: HTTP
+            periodSeconds: 90
+            successThreshold: 1
+            failureThreshold: 5
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: http
+              scheme: HTTP
+            periodSeconds: 90
+            successThreshold: 1
+            failureThreshold: 5
+            timeoutSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /var/thanos/compact
+            - name: thanos-storage
+              mountPath: /etc/thanos
+          resources:
+            requests:
+              cpu: 0
+              memory: 50Mi
+            limits:
+              memory: 2Gi
+      securityContext:
+        fsGroup: 1001
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: thanos-compact
+        - name: thanos-storage
+          configMap:
+            name: thanos-storage
+      serviceAccountName: thanos-s3-serviceaccount
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: thanos-compact
+  annotations:
+    ebs.csi.aws.com/volumeType: gp3
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: gp2
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: thanos-compact
+  labels:
+    app.kubernetes.io/name: thanos-compact
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: thanos-compact
+  minAvailable: 1

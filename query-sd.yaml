@@ -1,0 +1,4 @@
+- targets:
+    - thanos-query-frontend:10902
+  labels:
+    team: platform

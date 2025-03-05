@@ -1,0 +1,15 @@
+groups:
+  - name: data
+    rules:
+      - alert: KubeCronJobFailed
+        expr: |
+          (max by(owner_name,cluster) (kube_job_status_start_time{instance!~"kubecost.*"} * on(job_name,cluster) group_left(owner_name) ((kube_job_status_succeeded{instance!~"kubecost.*"} / kube_job_status_succeeded{instance!~"kubecost.*"} == 1) + on(job_name,cluster) group_left(owner_name) (0 * kube_job_owner{owner_is_controller="true",owner_kind="CronJob", namespace="dom-data", instance!~"kubecost.*"}))))
+          < bool
+          (max by(owner_name,cluster) (kube_job_status_start_time{instance!~"kubecost.*"} * on(job_name,cluster) group_left(owner_name) ((kube_job_status_failed{instance!~"kubecost.*"} / kube_job_status_failed{instance!~"kubecost.*"} == 1) + on(job_name,cluster) group_left(owner_name) (0 * kube_job_owner{owner_is_controller="true",owner_kind="CronJob", namespace="dom-data", instance!~"kubecost.*"})))) == 1
+        for: 15m
+        labels:
+          severity: critical
+          domain: data
+        annotations:
+          description: Cron Job {{ $labels.owner_name }} is failing to complete
+          summary: Cron Job failed to complete.

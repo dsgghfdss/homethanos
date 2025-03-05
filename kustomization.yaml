@@ -1,0 +1,20 @@
+kind: Kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+namespace: infra-monitoring
+resources:
+  - ../common/non-prod
+  - cluster-label.yaml
+  - ingress.yaml
+
+configMapGenerator:
+  - name: thanos-storage
+    files:
+      - config.yaml=storage.yaml
+  - name: alerts
+    behavior: merge
+    files:
+      - unleash-k8s-monitoring.yaml=unleash-alerts.yaml
+
+patchesStrategicMerge:
+  - receive-patch.yaml
+  - store-patch.yaml

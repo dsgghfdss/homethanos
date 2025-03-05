@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: thanos-receive
+  labels:
+    app.kubernetes.io/name: thanos-receive
+spec:
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        annotations:
+          ebs.csi.aws.com/volumeType: gp3
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 20Gi

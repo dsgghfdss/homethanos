@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: thanos-query
+  annotations:
+    prometheus.io/path: /metrics
+    prometheus.io/port: "9090"
+    prometheus.io/scrape: "true"
+  name: thanos-query
+spec:
+  ports:
+    - port: 9090
+      protocol: TCP
+      targetPort: http
+      name: http
+    - port: 10901
+      protocol: TCP
+      targetPort: grpc
+      name: grpc
+  selector:
+    app.kubernetes.io/name: thanos-query
+  sessionAffinity: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: thanos-query
+  labels:
+    app.kubernetes.io/name: thanos-query
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: thanos-query
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: thanos-query
+    spec:
+      containers:
+        - name: thanos-query
+          image: thanos
+          args:
+            - query
+            - --log.level=warn
+            - --query.auto-downsampling
+            - --query.promql-engine=thanos
+            - --query.replica-label=replica
+            - --query.replica-label=rule_replica
+            - --store.response-timeout=15s
+            - --store.sd-files=/etc/thanos/store-sd.yaml
+          ports:
+            - name: http
+              containerPort: 10902
+            - name: grpc
+              containerPort: 10901
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /-/healthy
+              port: http
+              scheme: HTTP
+            periodSeconds: 60
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /-/ready
+              port: http
+              scheme: HTTP
+            periodSeconds: 60
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 0m
+              memory: 96Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          volumeMounts:
+            - name: config
+              mountPath: /etc/thanos
+      securityContext:
+        fsGroup: 1001
+      volumes:
+        - name: config
+          configMap:
+            name: thanos-query
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: thanos-query
+  labels:
+    app.kubernetes.io/name: thanos-query
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: thanos-query
+  minAvailable: 1
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: thanos-query
+  labels:
+    app.kubernetes.io/name: thanos-query
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: thanos-query
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80

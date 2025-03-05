@@ -1,0 +1,18 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: thanos-store
+  labels:
+    app.kubernetes.io/name: thanos-store
+spec:
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        annotations:
+          ebs.csi.aws.com/volumeType: gp3
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 15Gi

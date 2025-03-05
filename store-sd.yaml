@@ -1,0 +1,4 @@
+- targets:
+    - dns+thanos-receive:10901
+    - thanos-store:10901
+    - dns+thanos-rule:10901

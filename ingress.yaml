@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: thanos-receive
+  namespace: infra-monitoring
+  annotations:
+    # Instruct Traefik to communicate with the backend using h2c (cleartext HTTP/2), suitable for gRPC
+    traefik.ingress.kubernetes.io/service.serversscheme: h2c
+    external-dns: internal-ingress
+
+spec:
+  ingressClassName: platform-ingress
+  rules:
+    - host: thanos-receive.stg.pcfi.ca
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: thanos-receive
+                port:
+                  number: 19291
